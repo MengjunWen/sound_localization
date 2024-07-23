@@ -7,6 +7,7 @@
 #include <ESPAsyncWebServer.h>
 #include <WiFiUdp.h>
 
+//Test 23-07-2024
 // WiFi credentials
 const char* ssid = "EwoutBergsma";
 const char* password = "EwoutBergsma";
