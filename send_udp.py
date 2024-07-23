@@ -32,15 +32,19 @@ sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
 
 try:
     for i in reversed(range(3)):
+        
         # Send data to the multicast group
         print(f'Sending message to {multicast_group}:{multicast_port}')
         message = '{}'.format(i)
+        print(f'Message {i}')
+        #if i == 1:
         b = bytes(message, encoding='utf-8')
         sent = sock.sendto(b, (multicast_group, multicast_port))
 
         # Wait for a short time before sending the next message
         time.sleep(1)
 
+    #Adjust this to change the length of the recording now it is 4 + 1
     time.sleep(4)
     mqtt_client.publish(mqtt_topic, 0)
     print(f'Published MQTT message to topic {mqtt_topic}')
