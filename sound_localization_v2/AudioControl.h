@@ -19,7 +19,12 @@ extern WiFiServer server;
 File audioFile;
 
 // SPI pin definitions for SD card
-#define SD_CS 5  // Chip select pin for SD card (you can change this if needed)
+#define SD_CS 21  // Chip select pin for SD card (you can change this if needed)
+#define SPI_MOSI 13
+#define SPI_MISO 12
+#define SPI_SCLK 14
+
+SPIClass spi = SPIClass(HSPI);
 
 // I2S setup for audio recording
 void setupI2S() {
@@ -51,7 +56,9 @@ void setupI2S() {
 
 // Initialize the SD card using SPI mode
 void initializeSDCard() {
-    if (!SD.begin(SD_CS)) {
+    spi.begin(SPI_SCLK, SPI_MISO, SPI_MOSI, SD_CS);
+
+    if (!SD.begin(SD_CS, spi)) {
         Serial.println("SD Card Mount Failed");
         return;
     }
