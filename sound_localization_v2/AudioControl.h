@@ -19,7 +19,10 @@ extern WiFiServer server;
 File audioFile;
 
 // SPI pin definitions for SD card
-#define SD_CS 5  // Chip select pin for SD card (you can change this if needed)
+#define SD_CS_PIN    21   // Chip Select (CS) pin, adjust based on your board
+#define SD_MISO_PIN  12  // MISO pin
+#define SD_MOSI_PIN  13  // MOSI pin
+#define SD_SCLK_PIN  14  // Clock pin
 
 // I2S setup for audio recording
 void setupI2S() {
@@ -51,43 +54,33 @@ void setupI2S() {
 
 // Initialize the SD card using SPI mode
 void initializeSDCard() {
-    if (!SD.begin(SD_CS)) {
-        Serial.println("SD Card Mount Failed");
-        return;
+    SPI.begin(SD_SCLK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+    // Initialize the SD card
+    if (!SD.begin(SD_CS_PIN, SPI)) {
+      Serial.println("Card Mount Failed");
+      return;
     }
-
+    // Retrieve card information
     uint8_t cardType = SD.cardType();
-    if (cardType == CARD_NONE) {
-        Serial.println("No SD card attached");
-        return;
-    }
 
+    if (cardType == CARD_NONE) {
+      Serial.println("No SD card attached");
+      return;
+    }
+    // Print card type
     Serial.print("SD Card Type: ");
     if (cardType == CARD_MMC) {
-        Serial.println("MMC");
+      Serial.println("MMC");
     } else if (cardType == CARD_SD) {
-        Serial.println("SDSC");
+      Serial.println("SDSC");
     } else if (cardType == CARD_SDHC) {
-        Serial.println("SDHC");
+      Serial.println("SDHC");
     } else {
-        Serial.println("UNKNOWN");
+      Serial.println("UNKNOWN");
     }
-
+    // Print card size
     uint64_t cardSize = SD.cardSize() / (1024 * 1024);
     Serial.printf("SD Card Size: %lluMB\n", cardSize);
-    Serial.println("SD Card initialized successfully");
-}
-
-// Synchronize time with NTP server
-void synchronizeTimeWithNTP() {
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) {
-        rtc.setTimeStruct(timeinfo);
-        Serial.println("Time synchronized with NTP server");
-    } else {
-        Serial.println("Failed to obtain time from NTP server");
-    }
 }
 
 // Record audio data

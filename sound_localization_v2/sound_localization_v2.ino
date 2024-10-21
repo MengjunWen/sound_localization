@@ -22,6 +22,11 @@ void connectToWiFi() {
 
 void setup() {
     Serial.begin(115200);
+    Serial.println("Starting");
+    for(int i = 0; i < 10; i++){
+      delay(1000);
+      Serial.println("...");
+    }
     connectToWiFi();
     
     // Setup mDNS for device discovery
