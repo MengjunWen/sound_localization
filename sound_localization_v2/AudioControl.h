@@ -9,6 +9,7 @@
 #include <ESP32Time.h>
 #include "driver/i2s.h"
 #include "config.h"
+#define LED_PIN 2
 
 // External declarations for variables used in the main sketch
 extern ESP32Time rtc;
@@ -23,6 +24,19 @@ File audioFile;
 #define SD_MISO_PIN  12  // MISO pin
 #define SD_MOSI_PIN  13  // MOSI pin
 #define SD_SCLK_PIN  14  // Clock pin
+
+// Global Variables for scheduling
+bool scheduledRecording = false;
+time_t startTime = 0;
+time_t stopTime = 0;
+
+// Helper function to parse time from string "hh:mm:ss"
+time_t parseTime(String timeStr) {
+    int hours = timeStr.substring(0, 2).toInt();
+    int minutes = timeStr.substring(3, 5).toInt();
+    int seconds = timeStr.substring(6, 8).toInt();
+    return hours * 3600 + minutes * 60 + seconds; // Convert to seconds from midnight
+}
 
 // I2S setup for audio recording
 void setupI2S() {
@@ -93,13 +107,13 @@ void recordAudio() {
     }
 }
 
-// Start audio recording
 void startRecording() {
     String fileName = "/recording_" + String(rtc.getEpoch()) + ".wav";
     audioFile = SD.open(fileName, FILE_WRITE);
     if (audioFile) {
         isRecording = true;
         Serial.println("Recording started...");
+        digitalWrite(LED_PIN, HIGH);  // Turn on the built-in LED
     } else {
         Serial.println("Failed to open file for recording");
     }
@@ -111,41 +125,38 @@ void stopRecording() {
         isRecording = false;
         audioFile.close();
         Serial.println("Recording stopped and file saved.");
+        digitalWrite(LED_PIN, LOW);  // Turn off the built-in LED
     }
 }
 
-// Handle UDP commands for starting and stopping the recording
-void handleUDPCommands() {
-    int packetSize = udp.parsePacket();
-    if (packetSize) {
-        char incomingPacket[255];
-        int len = udp.read(incomingPacket, 255);
-        if (len > 0) {
-            incomingPacket[len] = 0;
-        }
+// Print current time in HH:MM:SS format
+void printCurrentTime() {
+    String currentTime = rtc.getTime("%H:%M:%S");
+    Serial.println("Current time: " + currentTime);
+}
 
-        String packet = String(incomingPacket);
-        if (packet == "START_RECORDING") {
+// Check if it's time to start or stop recording
+void checkRecordingSchedule() {
+    time_t currentTime = rtc.getEpoch(); // Assuming rtc.getEpoch() returns seconds since midnight
+    //printCurrentTime();  // Print the current time to the Serial Monitor
+    if (scheduledRecording) {
+        if (currentTime >= startTime && currentTime < stopTime && !isRecording) {
             startRecording();
-        } else if (packet == "STOP_RECORDING") {
+        }
+        if (currentTime >= stopTime && isRecording) {
             stopRecording();
+            scheduledRecording = false; // Reset scheduling after stopping
         }
     }
 }
 
-// Serve files over HTTP for download
-void startWebServer() {
-    server.begin();
-    Serial.println("HTTP server started");
-
-    while (true) {
-        WiFiClient client = server.available();
-        if (client) {
-            String request = client.readStringUntil('\r');
-            client.flush();
-
-            // Handle the list files request
-            if (request.indexOf("GET /list") >= 0) {
+// Handle HTTP requests for scheduling recording
+void handleWebServer() {
+    WiFiClient client = server.available();
+    if (client) {
+        String request = client.readStringUntil('\r');
+        client.flush();
+        if (request.indexOf("GET /list") >= 0) {
                 client.println("HTTP/1.1 200 OK");
                 client.println("Content-Type: application/json");
                 client.println("Connection: close");
@@ -190,6 +201,55 @@ void startWebServer() {
                 }
             }
             client.stop();
+    }
+}
+
+// Start HTTP server and handle requests
+void startWebServer() {
+    server.begin();
+    Serial.println("HTTP server started");
+}
+
+// This function should be called in the main loop
+void handleWebServerTasks() {
+    handleWebServer();           // Handle any incoming HTTP requests
+    //checkRecordingSchedule();     // Check if recording needs to be scheduled
+}
+
+// Synchronize time with NTP server
+void synchronizeTimeWithNTP() {
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+        rtc.setTimeStruct(timeinfo);
+        Serial.println("Time synchronized with NTP server");
+    } else {
+        Serial.println("Failed to obtain time from NTP server");
+    }
+}
+
+// Function to handle incoming UDP packets and execute commands
+void handleUDPCommands() {
+    int packetSize = udp.parsePacket();  // Check if there is an incoming packet
+
+    if (packetSize > 0) {
+        char incomingPacket[255];  // Buffer to hold incoming packet
+        int len = udp.read(incomingPacket, 255);  // Read the packet into the buffer
+        if (len > 0) {
+            incomingPacket[len] = '\0';  // Null-terminate the packet string
+        }
+
+        // Convert packet to String and print it
+        String packet = String(incomingPacket);
+        Serial.println("Received UDP packet: " + packet);
+
+        // Basic command handling
+        if (packet.equals("START_RECORDING")) {
+            startRecording();
+        } else if (packet.equals("STOP_RECORDING")) {
+            stopRecording();
+        } else {
+            Serial.println("Unknown command received.");
         }
     }
 }

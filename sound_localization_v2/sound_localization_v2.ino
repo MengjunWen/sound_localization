@@ -5,11 +5,12 @@
 #include "config.h"
 #include "OTAUpdate.h"
 #include "AudioControl.h"
-
 WiFiUDP udp;
 ESP32Time rtc;
 bool isRecording = false;
 WiFiServer server(80);
+IPAddress multicastAddress(239, 0, 0, 1);
+#define LED_PIN 2  
 
 void connectToWiFi() {
     WiFi.begin(ssid, password);
@@ -21,6 +22,8 @@ void connectToWiFi() {
 }
 
 void setup() {
+    pinMode(LED_PIN, OUTPUT);  // Set LED_PIN as an output
+    digitalWrite(LED_PIN, LOW); // Ensure LED is off initially
     Serial.begin(115200);
     Serial.println("Starting");
     for(int i = 0; i < 10; i++){
@@ -28,7 +31,6 @@ void setup() {
       Serial.println("...");
     }
     connectToWiFi();
-    
     // Setup mDNS for device discovery
     if (MDNS.begin(deviceName)) {
         Serial.println("mDNS responder started");
@@ -36,33 +38,19 @@ void setup() {
     } else {
         Serial.println("Error starting mDNS");
     }
-
-    // Synchronize time with NTP server
     synchronizeTimeWithNTP();
-
-    // Initialize SD card and I2S setup
     initializeSDCard();
     setupI2S();
-
-    // Setup UDP multicast listener
-    udp.beginMulticast(WiFi.localIP(), multicastPort);
+    udp.beginMulticast(multicastAddress, multicastPort);
     Serial.printf("Listening for multicast on port %d\n", multicastPort);
-
-    // Setup OTA functionality
     setupOTA();
-
-    // Start the web server to serve files for download
     startWebServer();
 }
 
 void loop() {
-    // Handle OTA updates
     ArduinoOTA.handle();
-
-    // Handle UDP commands for synchronized recording
-    handleUDPCommands();
-
-    // Continuously record audio if recording is active
+    handleWebServerTasks();  
+    handleUDPCommands(); 
     if (isRecording) {
         recordAudio();
     }

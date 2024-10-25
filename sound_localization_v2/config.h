@@ -2,17 +2,17 @@
 #define CONFIG_H
 
 // WiFi credentials
-const char* ssid = "TEST";          // Replace with your Wi-Fi SSID
-const char* password = "TEST";  // Replace with your Wi-Fi password
+const char* ssid = "AndroidAP3908";          // Replace with your Wi-Fi SSID
+const char* password = "geil4388"; 
 const char* otaPassword = "2357"; // Replace with your OTA password
 
 // NTP Server Configuration
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;  // Adjust to your timezone
-const int daylightOffset_sec = 0;
+const int daylightOffset_sec = 3600;
 
 // Multicast Configuration
-const char* multicastAddress = "239.0.0.1";
+//const char* multicastAddress = "239.0.0.1";
 const unsigned int multicastPort = 12345;
 
 // Device Information
