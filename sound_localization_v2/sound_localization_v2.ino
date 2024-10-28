@@ -41,6 +41,7 @@ void setup() {
     synchronizeTimeWithNTP();
     initializeSDCard();
     setupI2S();
+    setupES8388();
     udp.beginMulticast(multicastAddress, multicastPort);
     Serial.printf("Listening for multicast on port %d\n", multicastPort);
     setupOTA();

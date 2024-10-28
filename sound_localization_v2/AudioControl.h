@@ -9,6 +9,8 @@
 #include <ESP32Time.h>
 #include "driver/i2s.h"
 #include "config.h"
+#include "ES8388.h"
+
 #define LED_PIN 2
 
 // External declarations for variables used in the main sketch
@@ -29,6 +31,8 @@ File audioFile;
 bool scheduledRecording = false;
 time_t startTime = 0;
 time_t stopTime = 0;
+
+ES8388 es8388(18, 23, 400000);
 
 // Helper function to parse time from string "hh:mm:ss"
 time_t parseTime(String timeStr) {
@@ -55,7 +59,7 @@ void setupI2S() {
     };
     
     i2s_pin_config_t pin_config = {
-        .bck_io_num = 26,     // Bit Clock pin
+        .bck_io_num = 5,     // Bit Clock pin
         .ws_io_num = 25,      // Word Select (L/R clock) pin
         .data_out_num = -1,   // Data Out not used in RX mode
         .data_in_num = 35     // Data In pin
@@ -64,6 +68,13 @@ void setupI2S() {
     i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
     i2s_set_pin(I2S_NUM_0, &pin_config);
     Serial.println("I2S setup completed");
+}
+
+void setupES8388() {
+    es8388.inputSelect(IN1);
+    es8388.setInputGain(8);
+    es8388.mixerSourceSelect(MIXADC, MIXADC);
+    Serial.println("ES8388 setup completed");
 }
 
 // Initialize the SD card using SPI mode
