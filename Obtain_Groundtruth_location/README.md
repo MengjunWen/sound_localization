@@ -1,6 +1,5 @@
-# function
-This code does this:
-1. read video input and undistorted it.
+# This code does this:
+1. read video input and read camera calibration_data.npz to undistort the camera.
 2. recognize the aruco markers on the screen.
 3. build virtual coodinates. Four aruco marker(0,1,2,3) locations is known(example: in the corners of a 200cm square);
 4. calculate location of the target marker: location of the fifth acuco marker(4); 
