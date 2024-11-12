@@ -9,7 +9,7 @@
    
    2.excel including time precise to the scale of ms and x,y coordinates.
    
-   3.video recording.
+   3.video recording(without text on the screen).
 
 # accuracy
 2024/11/5 one test when putting the marker in actual [0,0], we get the location output of [1.7962483 2.0125098]. 
