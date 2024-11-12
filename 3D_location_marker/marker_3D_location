@@ -1,1 +1,85 @@
+import numpy as np
+import cv2
+from cv2 import aruco
 
+# 加载校准数据
+with np.load('calibration_data.npz') as data:
+    mtx = data['mtx']
+    dist = data['dist']
+print("Camera calibration data loaded.")
+
+# 视频输入
+cap = cv2.VideoCapture(0)
+
+# ArUco 标记定义
+aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+parameters = aruco.DetectorParameters()
+
+# 已知的 ArUco 标记在真实空间的坐标
+pts_known = np.array([
+    [-100, -100, 0],  # ID 0
+    [100, -100, 0],   # ID 1
+    [100, 100, 0],    # ID 2
+    [-100, 100, 0],   # ID 3
+    [-100, 0, 45],     # ID 4 (高于平面)
+    [100, 0, 52]       # ID 5 (高于平面)
+], dtype='float32')
+marker_size = 17.85
+
+# 计算平面 p 的法向量
+v1 = pts_known[1] - pts_known[0]
+v2 = pts_known[2] - pts_known[0]
+normal_vector = np.cross(v1, v2)
+
+# 假设的摄像头到平面距离（根据实际测量或校准数据填写）
+d_p = 345  # 示例值，摄像头到平面距离
+camera_position = np.array([0, 0, -d_p])
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    # 使用校准数据矫正图像
+    frame = cv2.undistort(frame, mtx, dist)
+
+    # 转换为灰度图像
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    # 检测Aruco标记
+    corners, ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+
+    if ids is not None:
+        ids = ids.flatten()
+        print(f"Detected marker IDs: {ids}")  # 输出检测到的标记ID
+        
+        for i, marker_id in enumerate(ids):
+            if marker_id in [4, 5, 6]:  # 我们关注的标记
+                # 计算标记 x 的距离和角度
+                rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners[i], marker_size, mtx, dist)
+                distance = np.linalg.norm(tvec[0][0])  # 标记 x 到摄像头的距离
+
+                # 转换标记 x 的极坐标到直角坐标
+                theta = np.arctan2(tvec[0][0][2], np.sqrt(tvec[0][0][0]**2 + tvec[0][0][1]**2))
+                phi = np.arctan2(tvec[0][0][1], tvec[0][0][0])
+                x_x = distance * np.cos(theta) * np.cos(phi)
+                y_x = distance * np.cos(theta) * np.sin(phi)
+                z_x = distance * np.sin(theta)
+                marker_x_position = -(camera_position + np.array([x_x, y_x, z_x]))
+
+                # 计算标记 x 到平面 p 的距离
+                distance_to_plane = np.abs(np.dot(normal_vector, (marker_x_position - pts_known[0]))) / np.linalg.norm(normal_vector)
+                print(f"Marker ID {marker_id}: Distance to plane p = {distance_to_plane:.2f} cm")
+                
+                # 在图像上显示标记的三维坐标
+                marker_position_text = f"Marker {marker_id}: X={marker_x_position[0]:.2f}, Y={marker_x_position[1]:.2f}, Z={marker_x_position[2]:.2f}"
+                cv2.putText(frame, marker_position_text, (10, 30 + i*30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2, cv2.LINE_AA)
+        
+    # 显示校正后的画面
+    cv2.imshow('Calibrated Camera', frame)
+
+    if cv2.waitKey(1) & 0xFF == 27:  # 按 'ESC' 键退出
+        break
+
+cap.release()
+cv2.destroyAllWindows()
