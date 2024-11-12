@@ -6,7 +6,7 @@ from datetime import datetime  # 导入 datetime 类
 import time
 
 # Load calibration data
-with np.load('calibration_data.npz') as data:
+with np.load(r'd:\MOOD-SENSE\aruco_marker\calibration_data.npz') as data:
     mtx = data['mtx']
     dist = data['dist']
 print("Camera calibration data loaded.")
@@ -68,6 +68,9 @@ while True:
             # Compute the homography matrix from world coordinates to image coordinates
             H, _ = cv2.findHomography(pts_known, pts_detected)
             
+            # Create a copy of the frame to draw text (this copy will not be saved)
+            frame_with_text = frame.copy()
+
             # Loop over detected markers to display their IDs and virtual coordinates
             for i, marker_id in enumerate(ids):
                 # Get the corners of the current marker
@@ -79,9 +82,9 @@ while True:
                 pts_img = np.array([[center[0], center[1]]], dtype='float32')
                 pts_virtual = cv2.perspectiveTransform(np.array([pts_img]), np.linalg.inv(H))
                 
-                # Display ID and virtual coordinates on the frame
-                text = f"ID: {marker_id}, Coords: ({pts_virtual[0][0][0]:.2f}, {pts_virtual[0][0][1]:.2f})"
-                cv2.putText(frame, text, (int(center[0]), int(center[1]) + 20), 
+                # Display ID and virtual coordinates on the frame_with_text (not the saved frame)
+                text = f"ID: {marker_id}, ({pts_virtual[0][0][0]:.2f}, {pts_virtual[0][0][1]:.2f})"
+                cv2.putText(frame_with_text, text, (int(center[0]), int(center[1]) + 40), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
             
             # Detect the fifth ArUco marker (assumed ID is 4)
@@ -104,6 +107,12 @@ while True:
                 data['X'].append(x_virtual)
                 data['Y'].append(y_virtual)
 
+            # Write the frame without text to the video file (this is the original frame)
+            out.write(frame)
+
+            # Display the frame with text (only for display)
+            cv2.imshow('frame with text', frame_with_text)
+    
     # Write the current frame to the video file
     out.write(frame)
 
