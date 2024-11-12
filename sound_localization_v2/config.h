@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 // WiFi credentials
-const char* ssid = "AndroidAP3908";          // Replace with your Wi-Fi SSID
-const char* password = "geil4388"; 
+const char* ssid = "H369A1A3898";          // Replace with your Wi-Fi SSID
+const char* password = "9755746F54D9"; 
 const char* otaPassword = "2357"; // Replace with your OTA password
 
 // NTP Server Configuration

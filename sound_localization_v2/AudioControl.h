@@ -46,7 +46,7 @@ time_t parseTime(String timeStr) {
 void setupI2S() {
     i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
-        .sample_rate = 16000,
+        .sample_rate = 44100,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = I2S_COMM_FORMAT_I2S_MSB,
@@ -108,6 +108,52 @@ void initializeSDCard() {
     Serial.printf("SD Card Size: %lluMB\n", cardSize);
 }
 
+void eraseDirectory(File dir, const String& path = "/") {
+  if (!dir) {
+    Serial.println("Failed to open directory");
+    return;
+  }
+
+ while (true) {
+        File entry = dir.openNextFile();
+        if (!entry) {
+            break; // No more files
+        }
+
+        String entryPath = path + entry.name();
+        
+        if (entry.isDirectory()) {
+            // Recursively erase subdirectory contents
+            // eraseDirectory(entry, entryPath + "/"); 
+            // SD.rmdir(entryPath.c_str()); // Remove the empty directory
+        } else {
+            // Only delete the file if it ends with ".wav"
+            if (entryPath.endsWith(".wav")) {
+                if (SD.remove(entryPath.c_str())) {
+                    Serial.print("Deleted .wav file: ");
+                    Serial.println(entryPath);
+                } else {
+                    Serial.print("Failed to delete .wav file: ");
+                    Serial.println(entryPath);
+                }
+            }
+        }
+        entry.close();
+    }
+    dir.close();
+}
+
+void eraseSD() {
+  Serial.println("test");
+  File root = SD.open("/");
+  if (!root) {
+    Serial.println("Failed to open root directory");
+    return;
+  }
+  Serial.println("test2");
+  eraseDirectory(root);
+  Serial.println("SD card erased");
+}
 // Record audio data
 void recordAudio() {
     uint8_t i2sData[512];
@@ -119,7 +165,7 @@ void recordAudio() {
 }
 
 void startRecording() {
-    String fileName = "/recording_" + String(rtc.getEpoch()) + ".wav";
+    String fileName = "/"+ String(deviceName) + "_" + String(rtc.getEpoch()) + ".wav";
     audioFile = SD.open(fileName, FILE_WRITE);
     if (audioFile) {
         isRecording = true;
@@ -259,10 +305,14 @@ void handleUDPCommands() {
             startRecording();
         } else if (packet.equals("STOP_RECORDING")) {
             stopRecording();
-        } else {
+        } else if (packet.equals("ERASE_SD")) {
+            eraseSD();
+        } 
+        else {
             Serial.println("Unknown command received.");
         }
     }
+    
 }
 
 #endif // AUDIO_CONTROL_H
