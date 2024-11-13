@@ -61,7 +61,7 @@ class Recorders:
         latest = None
         if recordings:
             for i in range(len(recordings)):
-                if recordings[-i].endswith('.wav'):
+                if recordings[-i].endswith('.bin'):
                     latest = recordings[-i]
         else:
             return None
@@ -91,29 +91,22 @@ class Recorders:
                 print(f"Discovered ESP32 device at IP address: {self.esp32_ip}")
 
     def __convert_text_to_wav(self, input_file, output_file, channels, sampwidth, framerate):
+        with open(input_file, 'rb') as file:
+            binary_data = file.read()
         # Prepare to read the text file and collect data
-        data = []
-        with open(input_file, 'r') as file:
-            for line in file:
-                if line.strip():  # Ensure the line has content
-                    # Convert the line to an integer and pack it into binary format
-                    # Adjust the format '<h' as per your data range and endianess
-                    # also add AMPLIFY with '*5'
-                    sample = int(float(line.strip())*5)
-                    # Check sample width to determine packing format
-                    if sampwidth == 2:
-                        data.append(sample.to_bytes(2, byteorder='little', signed=True))
-                    elif sampwidth == 1:
-                        data.append(sample.to_bytes(1, byteorder='little', signed=True))
-        # Convert the list of bytes into a bytes object
-        data_bytes = b''.join(data)
+        channels = 2  # stereo
+        sample_width = 2  # 2 bytes for PCM 16-bit
+        frame_rate = 44100  # 16 kHz
+        n_frames = len(binary_data) // sample_width
 
-        # Write the data to a WAV file
-        with wave.open(output_file, 'w') as wavfile:
-            wavfile.setnchannels(channels)
-            wavfile.setsampwidth(sampwidth)
-            wavfile.setframerate(framerate)
-            wavfile.writeframes(data_bytes)
+        output_path = output_file.replace('.bin', '.wav')
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with wave.open(output_path, 'wb') as wav_file:
+            wav_file.setnchannels(channels)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setframerate(frame_rate)
+            wav_file.writeframes(binary_data)
 
     def __download_recording(self, filename, device_ip = esp32_ip):
         url = f"http://{device_ip}/{filename}"
@@ -124,7 +117,7 @@ class Recorders:
             file_path = os.path.join(self.DOWNLOAD_FOLDER, filename)
 
             with open(file_path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=1024):
+                for chunk in response.iter_content(chunk_size=4096):
                     file.write(chunk)
             print(f"Downloaded recording to {file_path}")
         else:
