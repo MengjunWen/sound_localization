@@ -1,7 +1,6 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESPmDNS.h>
-#include <ESP32Time.h>
 #include "config.h"
 #include "OTAUpdate.h"
 #include "AudioControl.h"
