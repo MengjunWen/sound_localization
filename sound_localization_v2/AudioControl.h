@@ -33,6 +33,8 @@ time_t startTime = 0;
 time_t stopTime = 0;
 
 ES8388 es8388(18, 23, 400000);
+size_t readsize = 0;
+uint16_t rxbuf[256], txbuf[256];
 
 // Helper function to parse time from string "hh:mm:ss"
 time_t parseTime(String timeStr) {
@@ -45,7 +47,7 @@ time_t parseTime(String timeStr) {
 // I2S setup for audio recording
 void setupI2S() {
     i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX),
         .sample_rate = 44100,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
@@ -59,9 +61,10 @@ void setupI2S() {
     };
     
     i2s_pin_config_t pin_config = {
+        .mck_io_num = 0,     // Master Clock pin
         .bck_io_num = 5,     // Bit Clock pin
         .ws_io_num = 25,      // Word Select (L/R clock) pin
-        .data_out_num = -1,   // Data Out not used in RX mode
+        .data_out_num = 26,   // Data Out not used in RX mode
         .data_in_num = 35     // Data In pin
     };
 
@@ -71,9 +74,13 @@ void setupI2S() {
 }
 
 void setupES8388() {
+    es8388.init();
     es8388.inputSelect(IN1);
     es8388.setInputGain(8);
+    es8388.outputSelect(OUT1);
+    es8388.setOutputVolume(12);
     es8388.mixerSourceSelect(MIXADC, MIXADC);
+    es8388.mixerSourceControl(DACOUT);
     Serial.println("ES8388 setup completed");
 }
 
@@ -154,18 +161,30 @@ void eraseSD() {
   eraseDirectory(root);
   Serial.println("SD card erased");
 }
-// Record audio data
+
 void recordAudio() {
-    uint8_t i2sData[512];
-    size_t bytesRead = 0;
-    i2s_read(I2S_NUM_0, (void*)i2sData, sizeof(i2sData), &bytesRead, portMAX_DELAY);
-    if (bytesRead > 0 && audioFile) {
-        audioFile.write(i2sData, bytesRead);
+    // uint8_t i2sData[512];
+    // size_t bytesRead = 0;
+    // i2s_read(I2S_NUM_0, (void*)i2sData, sizeof(i2sData), &bytesRead, portMAX_DELAY);
+    // if (bytesRead > 0 && audioFile) {
+    //     audioFile.write(i2sData, bytesRead);
+    // }
+    long long sum = 0;
+    int read_result = i2s_read(I2S_NUM_0, &rxbuf[0], 256 * 2, &readsize, 1000);
+    if (read_result != ESP_OK) {
+        Serial.printf("i2s_read error: %d\n", read_result);
+    }
+    // for (int i = 0; i < readsize / 2; i++) {
+    //     sum += rxbuf[i];
+    // }
+    // Serial.println(sum);
+    if (readsize > 0 && audioFile) {
+        audioFile.write((uint8_t *)rxbuf, readsize);
     }
 }
 
 void startRecording() {
-    String fileName = "/"+ String(deviceName) + "_" + String(rtc.getEpoch()) + ".wav";
+    String fileName = "/"+ String(deviceName) + "_" + String(rtc.getEpoch()) + ".bin";
     audioFile = SD.open(fileName, FILE_WRITE);
     if (audioFile) {
         isRecording = true;
@@ -245,9 +264,10 @@ void handleWebServer() {
                     client.println("Content-Type: application/octet-stream");
                     client.println("Connection: close");
                     client.println();
-
+                    uint8_t buffer[2048];
                     while (downloadFile.available()) {
-                        client.write(downloadFile.read());
+                        int bytesRead = downloadFile.read(buffer, sizeof(buffer));
+                        client.write(buffer, bytesRead);  // Send the whole buffer at once
                     }
                     downloadFile.close();
                 } else {
