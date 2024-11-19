@@ -1,0 +1,83 @@
+import socket
+import struct
+import asyncio
+import paho.mqtt.client as mqtt
+from irobot_edu_sdk.backend.bluetooth import Bluetooth
+from irobot_edu_sdk.robots import event, Robot, Root
+
+# MQTT settings > communication over MQTT
+mqtt_broker = '192.168.0.155'  # Replace with your MQTT broker address
+mqtt_port = 1883  # Default MQTT port
+mqtt_topic = 'record'
+mqtt_message_start = 1
+mqtt_message_stop = 0
+
+# Multicast settings > communication over UDP
+multicast_group = '239.255.255.250'
+multicast_port = 12345
+
+# Create the MQTT client
+mqtt_client = mqtt.Client()
+mqtt_client.connect(mqtt_broker, mqtt_port, 60)
+
+# Create the datagram socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+ttl = struct.pack('b', 1)
+sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+
+# Robot setup
+robot = Root(Bluetooth())
+
+@event(robot.when_play)
+async def perform_tasks(robot):
+    try:
+        # Step 1: Send UDP message
+        message = '{}'.format(0)
+        b = bytes(message, encoding='utf-8')
+        print("Sending UDP message...")
+        sock.sendto(b, (multicast_group, multicast_port))
+
+        # Step 2: Play starting sound
+        print("Playing starting sound...")
+        await robot.play_note(150, 2.0)
+        await robot.wait(0.1)
+        await robot.play_note(300, 2.0)
+
+        # Step 3: Publish MQTT start recording message
+        print(f"Publishing MQTT message '{mqtt_message_start}' to topic '{mqtt_topic}'...")
+        mqtt_client.publish(mqtt_topic, mqtt_message_start)
+
+        # Step 4: Draw square while playing variable sound
+        async def play_variable_sound():
+            frequency = 100  # Start frequency at 100Hz
+            while True:
+                await robot.play_note(frequency, 1)  # Play note with current frequency
+                frequency += 100  # Increase frequency by 100Hz
+                if frequency > 1000:  # Reset frequency if it exceeds 1000Hz
+                    frequency = 100
+                await asyncio.sleep(1)  # Wait for 1 second before changing frequency
+
+        print("Starting square drawing and sound playback...")
+        sound_task = asyncio.create_task(play_variable_sound())  # Start the sound task
+
+        # Draw a square (10 sides for demonstration)
+        for _ in range(10):
+            await robot.move(50)  # Move forward 50cm
+            await robot.turn_left(90)  # Turn left 90 degrees
+
+        sound_task.cancel()  # Stop sound playback after square is drawn
+        await robot.stop_sound()  # Ensure sound is stopped
+
+        # Step 5: Publish MQTT stop recording message
+        print(f"Publishing MQTT message '{mqtt_message_stop}' to topic '{mqtt_topic}'...")
+        mqtt_client.publish(mqtt_topic, mqtt_message_stop)
+
+    finally:
+        # Cleanup resources
+        print("Closing socket and MQTT connection...")
+        sock.close()
+        mqtt_client.disconnect()
+
+# Start robot tasks
+robot.play()
+print("Tasks finished.")
