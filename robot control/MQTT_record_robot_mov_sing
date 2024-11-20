@@ -26,7 +26,19 @@ ttl = struct.pack('b', 1)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
 
 # Robot setup
-robot = Root(Bluetooth())
+bluetooth = Bluetooth()  # Initialize Bluetooth object
+robot = Root(bluetooth)  # Create Robot instance with Bluetooth backend
+
+async def run_bluetooth_connection():
+    # Scan and connect to robot via Bluetooth
+    devices = await bluetooth.scan_devices()
+    for device in devices:
+        if device.name == "Robot 10":  # Replace with actual robot name
+            async with bluetooth.connect(device.address) as client:
+                print(f"Connected to {device.name}")
+                return client
+    print("No matching robot found via Bluetooth.")
+    return None
 
 @event(robot.when_play)
 async def perform_tasks(robot):
