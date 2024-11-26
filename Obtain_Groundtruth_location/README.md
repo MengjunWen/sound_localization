@@ -1,4 +1,4 @@
-# This code does this:
+# The code "location_fifth_marker.py" does this:
 1. read video input and read camera calibration_data.npz to undistort the camera.
 2. recognize the aruco markers on the screen.
 3. build virtual coodinates. Four aruco marker(0,1,2,3) locations is known(example: in the corners of a 200cm square);
