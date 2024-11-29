@@ -2,99 +2,107 @@ import random
 import csv
 import time
 import os
+import math
 
 # Constants
-ACTION_TYPES = ['move', 'wait', 'rotate_left', 'rotate_right']
+ACTION_TYPES = ['move', 'wait', 'turn_left', 'turn_right']
 MIN_FREQ = 100
 MAX_FREQ = 1000
 ROBOT_SPEED_CM_S = 5  # Robot speed in cm per second
-ROTATE_SPEED_DEG_S = 90  # Robot rotation speed in degrees per second
+ROTATION_SPEED_DEG_S = 90  # Robot rotation speed in degrees per second
 MAX_DISTANCE = 50  # Maximum movement in any direction (50 cm)
-MAX_POSITION = 100  # Boundary in cm (100 cm in each direction)
 ACTION_DURATION = 60  # Action duration in seconds
+BOUNDARY = 100  # Square boundary: [-100, -100] to [100, 100]
 
-# Robot's current position (starting at 0,0)
+# Robot's initial position and direction
 current_position = [0, 0]  # [x, y]
+current_angle = 0  # Angle in degrees, 0 means facing "right"
 
 def is_within_bounds(x, y):
-    """Check if the new position is within the 100cm x 100cm boundary."""
-    return 0 <= x <= MAX_POSITION and 0 <= y <= MAX_POSITION
+    """Check if the new position is within the boundary [-100, 100]."""
+    return -BOUNDARY <= x <= BOUNDARY and -BOUNDARY <= y <= BOUNDARY
 
 def generate_random_action_sequence():
     sequence = []
     elapsed_time = 0
 
+    global current_position, current_angle
+
     while elapsed_time < ACTION_DURATION:
-        action = random.choice(ACTION_TYPES)
+        action = random.choices(ACTION_TYPES, weights=[60, 20, 10, 10], k=1)[0]
 
         if action == 'move':
-            # Move is constrained to a max of 50cm per move
-            distance = random.randint(1, MAX_DISTANCE)  # Random move distance (1-50cm)
-            direction = random.choice(['x', 'y'])  # Random axis: 'x' or 'y'
-            sign = random.choice([-1, 1])  # Random direction: -1 (backwards) or 1 (forwards)
-            new_position = current_position.copy()
+            distance = random.randint(1, MAX_DISTANCE)
+            # Calculate the new position based on the current angle
+            dx = round(distance * (random.random() < 0.8),# include chance giving it
+                                   distance = random.randint(1, MAX_DISTANCE))
+            dx = round(distance * math.cos(math.radians(current_angle)))
+            dy = round(distance * math.sin(math.radians(current_angle)))
 
-            if direction == 'x':  # Moving along the x-axis
-                new_position[0] += distance * sign
-            else:  # Moving along the y-axis
-                new_position[1] += distance * sign
+            new_x = current_position[0] + dx
+            new_y = current_position[1] + dy
 
-            # Ensure the new position is within the boundaries
-            if is_within_bounds(new_position[0], new_position[1]):
-                current_position[:] = new_position  # Update the position if valid
-                duration = round(distance / ROBOT_SPEED_CM_S, 1)  # Duration to move, rounded to 1 decimal place
-                frequency = random.randint(MIN_FREQ, MAX_FREQ)  # Frequency for sound
+            # Check if the move is within bounds
+            if is_within_bounds(new_x, new_y):
+                current_position = [new_x, new_y]
+                duration = round(distance / ROBOT_SPEED_CM_S, 1)  # Time to move
+                frequency = random.randint(MIN_FREQ, MAX_FREQ)
 
-                # Add sound with 80% probability
+                # Add the action to the sequence
                 if random.random() < 0.8:
-                    sequence.append(('move', distance, frequency, duration))  # Include frequency only once
+                    sequence.append(('move', distance, frequency, duration))
                 else:
-                    sequence.append(('move', distance))  # No sound
-
+                    sequence.append(('move', distance))
                 elapsed_time += duration
             else:
-                # Skip move if it would exceed bounds (do not add to sequence)
+                # If the move goes out of bounds, skip this action
                 continue
 
         elif action == 'wait':
-            duration = round(random.uniform(0.5, 2.0), 1)  # Random wait time (0.5 to 2 seconds), rounded
+            duration = round(random.uniform(0.5, 2.0), 1)
+            frequency = random.randint(MIN_FREQ, MAX_FREQ)
+
             if random.random() < 0.8:
-                sequence.append((frequency, duration)) 
+                sequence.append(('wait', duration, frequency))
             else:
                 sequence.append(('wait', duration))
             elapsed_time += duration
 
-        elif action in ['rotate_left', 'rotate_right']:
-            degrees = random.randint(15, 90)  # Random degrees to rotate
-            duration = round(degrees / ROTATE_SPEED_DEG_S, 1)  # Time to rotate (in seconds), rounded
-            frequency = random.randint(MIN_FREQ, MAX_FREQ)  # Frequency for sound
+        elif action in ['turn_left', 'turn_right']:
+            degrees = random.randint(15, 90)
+            duration = round(degrees / ROTATION_SPEED_DEG_S, 1)
+            frequency = random.randint(MIN_FREQ, MAX_FREQ)
 
-            # Add sound with 80% probability
+            # Update current angle based on turn direction
+            if action == 'turn_left':
+                current_angle = (current_angle + degrees) % 360
+            elif action == 'turn_right':
+                current_angle = (current_angle - degrees) % 360
+
             if random.random() < 0.8:
-                sequence.append((action, degrees, frequency, duration))  # Include frequency only once
+                sequence.append((action, degrees, frequency, duration))
             else:
-                sequence.append((action, degrees))  # No sound
-
+                sequence.append((action, degrees))
             elapsed_time += duration
 
-    print(elapsed_time)
     return sequence
 
 def save_actions_to_csv(sequence):
-    # Generate the filename with the Unix timestamp
     timestamp = int(time.time())
     filename = f"actions_{timestamp}.csv"
-    
-    # Check if directory exists, otherwise create it
+
     if not os.path.exists('action_sequences'):
         os.makedirs('action_sequences')
 
-    # Define the file path
     file_path = os.path.join('action_sequences', filename)
 
-    # Write the sequence to CSV
     with open(file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         for action in sequence:
             writer.writerow(action)
     print(f"Action sequence saved to {file_path}")
+
+# Generate the sequence and save it
+actions = generate_random_action_sequence()
+save_actions_to_csv(actions)
+
