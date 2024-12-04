@@ -12,7 +12,7 @@ ROBOT_SPEED_CM_S = 5  # Robot speed in cm per second
 ROTATION_SPEED_DEG_S = 90  # Robot rotation speed in degrees per second
 MAX_DISTANCE = 50  # Maximum movement in any direction (50 cm)
 ACTION_DURATION = 60  # Action duration in seconds
-BOUNDARY = 100  # Square boundary: [-100, -100] to [100, 100]
+BOUNDARY = 80  # Square boundary: [-100, -100] to [100, 100]
 
 # Robot's initial position and direction
 current_position = [0, 0]  # [x, y]
