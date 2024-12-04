@@ -18,7 +18,8 @@ class Recorders:
     SAMPLE_FREQUENCY = 44100
 
     esp32_ip = None
-    
+    list_of_esp32 = []
+
     # Function to discover mDNS services
     def __init__(self, multicast_group=MULTICAST_GROUP, multicast_port=MULTICAST_PORT):
         self.MULTICAST_GROUP = multicast_group
@@ -30,6 +31,33 @@ class Recorders:
     def stop(self):
         self.__send_multicast_packet("STOP_RECORDING")
     
+    async def start_tcp(self):
+        await self.find()
+        if not self.list_of_esp32:
+            print("No ESP32 devices found on the network.")
+            return
+        for ip in self.list_of_esp32:
+            url = f"http://{ip}/start"
+            response = requests.get(url)
+            if response.status_code == 200:
+                print(f"Started recording on {ip}")
+            else:
+                print(f"Failed to start recording on {ip}. Status code: {response.status_code}")
+
+    async def stop_tcp(self):
+        await self.find()
+        if not self.list_of_esp32:
+            print("No ESP32 devices found on the network.")
+            return
+        for ip in self.list_of_esp32:
+            url = f"http://{ip}/stop"
+            response = requests.get(url)
+            if response.status_code == 200:
+                print(f"Stopped recording on {ip}")
+            else:
+                print(f"Failed to stop recording on {ip}. Status code: {response.status_code}")
+
+
     async def find(self, name = ESP32_SERVICE_NAME):
         self.ESP32_SERVICE_NAME = name
         zeroconf = Zeroconf()
@@ -89,6 +117,7 @@ class Recorders:
             if info and self.ESP32_SERVICE_NAME in name:
                 self.esp32_ip = socket.inet_ntoa(info.addresses[0])
                 print(f"Discovered ESP32 device at IP address: {self.esp32_ip}")
+                self.list_of_esp32.append(self.esp32_ip)
 
     def __convert_text_to_wav(self, input_file, output_file, channels, sampwidth, framerate):
         with open(input_file, 'rb') as file:

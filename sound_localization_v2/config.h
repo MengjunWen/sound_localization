@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 // WiFi credentials
-const char* ssid = "H369A1A3898";          // Replace with your Wi-Fi SSID
-const char* password = "9755746F54D9"; 
+const char* ssid = "HANZE-IN01";          // Replace with your Wi-Fi SSID
+const char* password = "Aux359MHZ7"; 
 const char* otaPassword = "2357"; // Replace with your OTA password
 
 // NTP Server Configuration

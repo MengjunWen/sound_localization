@@ -262,7 +262,6 @@ void handleWebServer() {
                 client.println();
                 client.println("{\"status\": \"Recording started\"}");
                 startRecording();
-                root.close();
             }
             else if (request.indexOf("GET /stop") >= 0){
                 client.println("HTTP/1.1 200 OK");
@@ -271,7 +270,6 @@ void handleWebServer() {
                 client.println();
                 client.println("{\"status\": \"Recording stopped\"}");
                 stopRecording();
-                root.close();
             }
             else if (request.indexOf("GET /") >= 0) {
                 // Handle file download request
