@@ -34,8 +34,7 @@ def generate_random_action_sequence():
         if action == 'move':
             distance = random.randint(1, MAX_DISTANCE)
             # Calculate the new position based on the current angle
-            dx = round(distance * (random.random() < 0.8),# include chance giving it
-                                   distance = random.randint(1, MAX_DISTANCE))
+            dx = round(distance * (random.random() < 0.8), random.randint(1, MAX_DISTANCE))
             dx = round(distance * math.cos(math.radians(current_angle)))
             dy = round(distance * math.sin(math.radians(current_angle)))
 
