@@ -52,7 +52,7 @@ async def perform_actions(robot):
     print("Event triggered2")
     #sound_task = asyncio.create_task(play_variable_sound())
 
-    csv_file = "./action_sequences/actions_1732895967.csv"  
+    csv_file = "D:\\MOOD-SENSE\\sound_localization-main\\sound_localization-main\\robot control\\action_sequences\\actions_1732889065copy.csv" 
     # Replace with your CSV file path
     sequence = load_actions_from_csv(csv_file)
 
