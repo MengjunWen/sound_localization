@@ -12,7 +12,7 @@ ROBOT_SPEED_CM_S = 5  # Robot speed in cm per second
 ROTATION_SPEED_DEG_S = 90  # Robot rotation speed in degrees per second
 MAX_DISTANCE = 50  # Maximum movement in any direction (50 cm)
 ACTION_DURATION = 60  # Action duration in seconds
-BOUNDARY = 100  # Square boundary: [-100, -100] to [100, 100]
+BOUNDARY = 80  # Square boundary: [-100, -100] to [100, 100]
 
 # Robot's initial position and direction
 current_position = [0, 0]  # [x, y]
@@ -29,13 +29,12 @@ def generate_random_action_sequence():
     global current_position, current_angle
 
     while elapsed_time < ACTION_DURATION:
-        action = random.choices(ACTION_TYPES, weights=[60, 20, 10, 10], k=1)[0]
+        action = random.choices(ACTION_TYPES, weights=[70, 10, 10, 10], k=1)[0]
 
         if action == 'move':
             distance = random.randint(1, MAX_DISTANCE)
             # Calculate the new position based on the current angle
-            dx = round(distance * (random.random() < 0.8),# include chance giving it
-                                   distance = random.randint(1, MAX_DISTANCE))
+            dx = round(distance * (random.random() < 0.8), random.randint(1, MAX_DISTANCE))
             dx = round(distance * math.cos(math.radians(current_angle)))
             dy = round(distance * math.sin(math.radians(current_angle)))
 
