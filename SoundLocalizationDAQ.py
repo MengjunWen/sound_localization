@@ -128,38 +128,73 @@ class AudioRecorders:
 
 # Robot Control Module
 class RobotController:
-    def __init__(self):
+    def __init__(self, action_sequence_file):
         self.robot = Root(Bluetooth())
+        self.action_sequence_file = action_sequence_file
+
+    def load_actions_from_csv(self):
+        actions = []
+        with open(self.action_sequence_file, mode='r') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                print(f"Loading row: {row}")
+                action_type = row[0]
+                if action_type == 'move':
+                    distance = int(row[1])
+                    if len(row) == 2:
+                        actions.append((action_type, distance))
+                    elif len(row) == 3:
+                        duration = float(row[2])
+                        actions.append((action_type, distance, duration))
+                    elif len(row) == 4:
+                        frequency = int(row[2])
+                        duration = float(row[3])
+                        actions.append((action_type, distance, frequency, duration))
+                elif action_type in ['turn_left', 'turn_right']:
+                    degrees = int(row[1])
+                    if len(row) == 2:
+                        actions.append((action_type, degrees))
+                    elif len(row) == 3:
+                        duration = float(row[2])
+                        actions.append((action_type, degrees, duration))
+                    elif len(row) == 4:
+                        frequency = int(row[2])
+                        duration = float(row[3])
+                        actions.append((action_type, degrees, frequency, duration))
+                elif action_type == 'wait':
+                    duration = float(row[1])
+                    actions.append((action_type, duration))
+        print(f"Loaded actions: {actions}")
+        return actions
 
     @event(Root.when_play)
-    async def perform_actions(self, actions):
-        # Test sound before starting
-        print("Playing test sound...")
-        await self.robot.play_note(500, 1.0)
-
-        # Execute actions
+    async def perform_actions(self):
+        actions = self.load_actions_from_csv()
+        print("Event triggered: Performing actions")
         for action in actions:
+            print(f"Performing action: {action}")
             if action[0] == 'move':
                 await self.robot.move(action[1])
-                await self.robot.play_note(action[2], action[3])
-                await asyncio.sleep(action[3])
+                if len(action) > 2:
+                    await self.robot.play_note(action[2], action[3])
             elif action[0] == 'wait':
-                await asyncio.sleep(action[1])
-            elif action[0] == 'turn_left':
-                await self.robot.turn_left(action[1])
-                await asyncio.sleep(action[2])
-            elif action[0] == 'turn_right':
-                await self.robot.turn_right(action[1])
-                await asyncio.sleep(action[2])
-        print("Robot actions completed.")
+                if len(action) == 3:
+                    await self.robot.play_note(action[2], action[1])
+                await self.robot.wait(action[1])
+            elif action[0] in ['turn_left', 'turn_right']:
+                if action[0] == 'turn_left':
+                    await self.robot.turn_left(action[1])
+                else:
+                    await self.robot.turn_right(action[1])
+                if len(action) > 2:
+                    await self.robot.play_note(action[2], action[3])
 
 # Main Controller
 class MultiDeviceController:
     def __init__(self, calibration_file, action_sequence_file):
         self.video_recorder = VideoRecorder(calibration_file)
         self.audio_recorders = AudioRecorders()
-        self.robot_controller = RobotController()
-        self.action_sequence_file = action_sequence_file
+        self.robot_controller = RobotController(action_sequence_file)
         self.timestamps = {}
         self.csv_filename = f"run_{int(time.time())}.csv"
 
@@ -177,38 +212,30 @@ class MultiDeviceController:
         print(f"Timestamps saved to {self.csv_filename}")
 
     async def start(self):
-        # Start video recording
         self.log_timestamp('video_start')
         self.video_recorder.start()
         video_task = asyncio.create_task(self.video_recorder.capture_frames())
 
-        # Discover ESP32 devices
         await self.audio_recorders.discover_devices()
-        if len(self.audio_recorders.list_of_esp32) > 0:
+        if self.audio_recorders.list_of_esp32:
             self.log_timestamp('audio_start')
             self.audio_recorders.start_tcp()
 
-        # Perform robot actions
-        actions = [('move', 30, 440, 3), ('wait', 2)]  # Example actions
-        await self.robot_controller.perform_actions(actions)
+        await self.robot_controller.perform_actions()
 
-        # Wait 3 seconds after last robot action
         await asyncio.sleep(3)
         print("Completed waiting 3 seconds after robot actions.")
 
-        # Stop all recordings
         await self.stop()
         await video_task
 
     async def stop(self):
-        if len(self.audio_recorders.list_of_esp32) > 0:
+        if self.audio_recorders.list_of_esp32:
             self.log_timestamp('audio_stop')
             self.audio_recorders.stop_tcp()
 
         self.log_timestamp('video_stop')
         self.video_recorder.stop()
-
-        # Save timestamps to CSV
         self.save_timestamps_to_csv()
 
 # Entry Point
