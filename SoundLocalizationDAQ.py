@@ -1,4 +1,6 @@
+import os
 import csv
+import json
 import time
 import cv2
 import numpy as np
@@ -9,6 +11,7 @@ import requests
 import asyncio
 from irobot_edu_sdk.backend.bluetooth import Bluetooth
 from irobot_edu_sdk.robots import Root, event
+
 
 # Video Recording Module
 class VideoRecorder:
@@ -70,10 +73,12 @@ class VideoRecorder:
 
 # Audio Recording Module
 class AudioRecorders:
+    # Configuration
     MULTICAST_GROUP = '239.0.0.1'
     MULTICAST_PORT = 12345
     SERVICE_TYPE = "_http._tcp.local."
     ESP32_SERVICE_NAME = "ESP32_Audio_Device"
+    DOWNLOAD_FOLDER = "./raw_files"
 
     def __init__(self):
         self.list_of_esp32 = []
@@ -85,14 +90,6 @@ class AudioRecorders:
         await asyncio.sleep(5)  # Wait for devices to be discovered
         zeroconf.close()
 
-        num_devices = len(self.list_of_esp32)
-        if num_devices == 0:
-            print("No ESP32 devices found.")
-        else:
-            print(f"Discovered {num_devices} ESP32 devices:")
-            for ip in self.list_of_esp32:
-                print(f" - {ip}")
-
     def _on_service_state_change(self, zeroconf, service_type, name, state_change):
         if state_change == ServiceStateChange.Added:
             info = zeroconf.get_service_info(service_type, name)
@@ -103,6 +100,7 @@ class AudioRecorders:
                     print(f"Discovered device: {ip}")
 
     def start_tcp(self):
+        # Start recording on each ESP device
         for ip in self.list_of_esp32:
             url = f"http://{ip}/start"
             try:
@@ -115,6 +113,7 @@ class AudioRecorders:
                 print(f"Error connecting to {ip}: {e}")
 
     def stop_tcp(self):
+        # Stop recording on each ESP device
         for ip in self.list_of_esp32:
             url = f"http://{ip}/stop"
             try:
@@ -125,6 +124,46 @@ class AudioRecorders:
                     print(f"Failed to stop recording on {ip}")
             except requests.RequestException as e:
                 print(f"Error connecting to {ip}: {e}")
+
+    def list_recordings(self, device_ip):
+        url = f"http://{device_ip}/list"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                return json.loads(response.text)
+            else:
+                print(f"Failed to retrieve recording list from {device_ip}. Status code: {response.status_code}")
+                return None
+        except requests.RequestException as e:
+            print(f"Error connecting to {device_ip} for listing recordings: {e}")
+            return None
+
+    def download_latest_recording(self, device_ip):
+        recordings = self.list_recordings(device_ip)
+        if not recordings:
+            print(f"No recordings found on {device_ip}")
+            return
+        recordings.sort()
+        latest = next((rec for rec in reversed(recordings) if rec.endswith('.bin')), None)
+        if latest:
+            sanitized_ip = device_ip.replace('.', '')
+            download_name = f"{sanitized_ip}_{latest}"
+            url = f"http://{device_ip}/{latest}"
+            try:
+                response = requests.get(url, stream=True)
+                if response.status_code == 200:
+                    os.makedirs(self.DOWNLOAD_FOLDER, exist_ok=True)
+                    file_path = os.path.join(self.DOWNLOAD_FOLDER, download_name)
+                    with open(file_path, 'wb') as file:
+                        for chunk in response.iter_content(chunk_size=4096):
+                            file.write(chunk)
+                    print(f"Downloaded {latest} from {device_ip} as {download_name}")
+                else:
+                    print(f"Failed to download {latest} from {device_ip}. Status code: {response.status_code}")
+            except requests.RequestException as e:
+                print(f"Error downloading {latest} from {device_ip}: {e}")
+        else:
+            print(f"No suitable recordings found on {device_ip}")
 
 # Robot Control Module
 class RobotController:
@@ -212,31 +251,44 @@ class MultiDeviceController:
         print(f"Timestamps saved to {self.csv_filename}")
 
     async def start(self):
+        # Start video recording
         self.log_timestamp('video_start')
         self.video_recorder.start()
         video_task = asyncio.create_task(self.video_recorder.capture_frames())
 
+        # Discover ESP devices and start audio recording
         await self.audio_recorders.discover_devices()
         if self.audio_recorders.list_of_esp32:
             self.log_timestamp('audio_start')
             self.audio_recorders.start_tcp()
 
+        # Perform robot actions
         await self.robot_controller.perform_actions()
 
+        # Wait 3 seconds after last robot action
         await asyncio.sleep(3)
         print("Completed waiting 3 seconds after robot actions.")
 
+        # Stop all recordings
         await self.stop()
         await video_task
 
     async def stop(self):
+        # Stop audio recording
         if self.audio_recorders.list_of_esp32:
             self.log_timestamp('audio_stop')
             self.audio_recorders.stop_tcp()
 
+        # Stop video recording
         self.log_timestamp('video_stop')
         self.video_recorder.stop()
+
+        # Save timestamps
         self.save_timestamps_to_csv()
+
+        # Download latest recordings from ESP devices
+        for ip in self.audio_recorders.list_of_esp32:
+            self.audio_recorders.download_latest_recording(ip)
 
 # Entry Point
 if __name__ == "__main__":
