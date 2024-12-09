@@ -37,20 +37,9 @@ def load_actions_from_csv(file_path):
     print(f"Loaded actions: {actions}")  # Debug the loaded actions
     return actions
 
-# Play sound in parallel using a loop for continuous effect
-async def play_variable_sound():
-    frequency = 100  # Start at 100Hz
-    while True:
-        await robot.play_note(frequency, 1)  # Play note with current frequency
-        frequency += 100  # Increase frequency by 100Hz
-        if frequency > 1000:  # Reset frequency if it exceeds 2000Hz
-            frequency = 100
-        await asyncio.sleep(1)  # Wait for 1 second before changing frequency
-
 @event(robot.when_play)
 async def perform_actions(robot):
     print("Event triggered2")
-    #sound_task = asyncio.create_task(play_variable_sound())
 
     csv_file = "./action_sequences/actions_1732895967.csv"  
     # Replace with your CSV file path
