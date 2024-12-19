@@ -12,7 +12,10 @@ from experiment_manager import ExperimentManager
 from video_recorder import VideoRecorder
 from audio_recorder import AudioRecorders
 from logger import Logger
-csv_file = "D:/MOOD-SENSE/sound_localization-no_multicast_to_esp32/action_sequences/4.csv"
+import threading
+
+csv_file = "D:/MOOD-SENSE/sound_localization-no_multicast_to_esp32/action_sequences/4.csv
+
 expected_device_count=4
 
 def load_actions_from_csv(file_path):
@@ -115,8 +118,15 @@ async def perform_actions(robot):
         logger.save_timestamps_to_csv()
         print("Downloading audio files...")
 
+        threads = []
         for ip in audio_recorder.list_of_esp32:
-            audio_recorder.download_latest_recording(ip)
+            thread = threading.Thread(target=audio_recorder.download_latest_recording, args=(ip,))
+            threads.append(thread)  # Store the thread objects
+            thread.start()
+
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
 
         await robot.disconnect()
 
