@@ -20,13 +20,19 @@ class VideoRecorder:
         self.logger = logger
         self.video_stopped = False
 
+        try:
+            self.cap = cv2.VideoCapture(0)
+        except Exception as e:
+            print(f"Error initializing video recorder: {e}")
+
     def start(self):
         try:
             with np.load(self.calibration_file) as data:
                 mtx = data['mtx']
                 dist = data['dist']
 
-            self.cap = cv2.VideoCapture(0)
+            if self.cap is None:
+                self.cap = cv2.VideoCapture(0)
 
             if not self.cap.isOpened():
                 print("Error: Cannot open the camera.")
@@ -86,11 +92,17 @@ class VideoRecorder:
 
         self.recording = False
 
+        if self.out:
+            self.out.release()
+            self.out = None
+        self.logger.log_timestamp('video_stop')
+
+        print(f"Video recording stopped. File saved: {self.output_filename}")
+    
+    def exit(self):
         if self.cap:
             self.cap.release()
         if self.out:
             self.out.release()
         cv2.destroyAllWindows()
-        self.logger.log_timestamp('video_stop')
-
-        print(f"Video recording stopped. File saved: {self.output_filename}")
+    
