@@ -13,8 +13,10 @@ from video_recorder import VideoRecorder
 from audio_recorder import AudioRecorders
 from logger import Logger
 import threading
+import soundfile as sf
+import matplotlib.pyplot as plt
 
-csv_file = "D:/MOOD-SENSE/sound_localization-no_multicast_to_esp32/action_sequences/4.csv
+csv_file = "D:/MOOD-SENSE/sound_localization-no_multicast_to_esp32/action_sequences/4.csv"
 
 expected_device_count=4
 
@@ -49,7 +51,6 @@ def load_actions_from_csv(file_path):
 @event(robot.when_play)
 async def perform_actions(robot):
     sequence = load_actions_from_csv(csv_file)
-
     exp_manager = ExperimentManager()  # 创建实验文件夹管理器
     exp_folder = exp_manager.get_exp_folder()
     logger = Logger(exp_folder)
@@ -63,11 +64,13 @@ async def perform_actions(robot):
         video_task = asyncio.create_task(video_recorder.capture_frames())
 
     await audio_recorder.discover_devices(expected_device_count)
+    # hardcoded ip addresses
+    # audio_recorder.list_of_esp32 = ["172.21.1.59", "172.21.1.70", "172.21.1.57", "172.21.1.72"]
 
     if len(audio_recorder.list_of_esp32) == expected_device_count:
         print("All devices discovered, starting audio recording...")
-        await asyncio.sleep(2)
-        audio_recorder.start_tcp()
+        # await asyncio.sleep(2)
+        await audio_recorder.start_tcp()
 
         logger.log_timestamp('Actions Start')
         async def execute_actions():
@@ -108,7 +111,6 @@ async def perform_actions(robot):
                         await robot.wait(action[1])
 
         await execute_actions()
-
         logger.log_timestamp('Actions End')
 
         audio_recorder.stop_tcp()
@@ -116,11 +118,14 @@ async def perform_actions(robot):
         video_recorder.stop_video()
 
         logger.save_timestamps_to_csv()
+        await robot.disconnect()
+
         print("Downloading audio files...")
 
         threads = []
-        for ip in audio_recorder.list_of_esp32:
-            thread = threading.Thread(target=audio_recorder.download_latest_recording, args=(ip,))
+        results = []
+        for i, ip in enumerate(audio_recorder.list_of_esp32):
+            thread = threading.Thread(target=lambda q, arg1: q.append(audio_recorder.download_latest_recording(arg1)), args=(results, ip,))
             threads.append(thread)  # Store the thread objects
             thread.start()
 
@@ -128,8 +133,40 @@ async def perform_actions(robot):
         for thread in threads:
             thread.join()
 
-        await robot.disconnect()
+        # Print the results
+        fig, axs = plt.subplots(len(results), 2, figsize=(10, 2 * len(results)))
 
+        for i, (result, ip) in enumerate(results):
+            data, samplerate = sf.read(result)
+                # Separate channels
+            if len(data.shape) > 1:  # Check if stereo
+                left_channel = data[:, 0]
+                right_channel = data[:, 1]
+            else:
+                left_channel = data
+                right_channel = data  # If mono, duplicate the data
+
+            # Plot left channel
+            time_axis = np.linspace(0, len(left_channel) / samplerate, num=len(left_channel))
+
+            axs[i, 0].plot(time_axis, left_channel)
+            axs[i, 0].set_title(f'Waveform {i+1} - {ip} - Left Channel')
+            axs[i, 0].set_xlabel('Time (s)')
+            axs[i, 0].set_ylabel('Amplitude')
+            axs[i, 0].set_ylim([-1, 1])  # Set y-axis limits
+
+            # Plot right channel
+            axs[i, 1].plot(time_axis, right_channel)
+            axs[i, 1].set_title(f'Waveform {i+1} - {ip} - Right Channel')
+            axs[i, 1].set_xlabel('Time (s)')
+            axs[i, 1].set_ylabel('Amplitude')
+            axs[i, 1].set_ylim([-1, 1])  # Set y-axis limits
+
+
+        plt.tight_layout()
+        plt.show()
+
+        
         print("Actions completed.")
 
 robot.play()

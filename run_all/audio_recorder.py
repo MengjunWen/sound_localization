@@ -44,9 +44,10 @@ class AudioRecorders:
                     self.list_of_esp32.append(ip)
                     print(f"Discovered device: {ip}")
 
-    def start_tcp(self):
+    async def start_tcp(self):
         for ip in self.list_of_esp32:
             url = f"http://{ip}/start"
+            await asyncio.sleep(1)
             try:
                 response = requests.get(url)
                 if response.status_code == 200:
@@ -112,7 +113,7 @@ class AudioRecorders:
                     os.makedirs(audio_wav_folder, exist_ok=True)
 
                     bin_path = file_path
-                    self.convert_bin_to_wav(bin_path, audio_wav_folder)
+                    return (self.convert_bin_to_wav(bin_path, audio_wav_folder), device_ip)
 
                 else:
                     print(f"Failed to download {latest} from {device_ip}")
@@ -164,6 +165,7 @@ class AudioRecorders:
                 wav_file.writeframes(binary_data)
 
             print(f"WAV file created at {output_path}")
-
+            return output_path
         except Exception as e:
             print(f"Failed to convert {bin_path} to WAV: {e}")
+            return None
