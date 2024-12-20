@@ -37,7 +37,7 @@ def load_actions_from_csv(file_path):
                 degrees = int(row[1])
                 if len(row) == 2:
                     actions.append((row[0], int(row[1])))
-                elif len(row) == 4:  # turn, angel, frequency, duration
+                elif len(row) == 4:  # turn, angle, frequency, duration
                     actions.append((action_type, degrees, int(row[2]), float(row[3])))
             elif action_type == 'wait':
                 duration = float(row[1])
@@ -51,16 +51,16 @@ def load_actions_from_csv(file_path):
 @event(robot.when_play)
 async def perform_actions(robot):
     sequence = load_actions_from_csv(csv_file)
-    exp_manager = ExperimentManager()  # 创建实验文件夹管理器
+    exp_manager = ExperimentManager()  # Create experiment folder manager
     exp_folder = exp_manager.get_exp_folder()
     logger = Logger(exp_folder)
 
     video_recorder = VideoRecorder(calibration_file="calibration_data.npz", output_directory=exp_folder, logger=logger)
     audio_recorder = AudioRecorders(exp_folder, logger)
     
-    # 启动视频录制
+    # Start video recording
     if video_recorder.start():
-        # 在后台异步运行捕获视频帧的方法
+        # Run the method to capture video frames asynchronously in the background
         video_task = asyncio.create_task(video_recorder.capture_frames())
 
     await audio_recorder.discover_devices(expected_device_count)
@@ -101,11 +101,11 @@ async def perform_actions(robot):
                         await note_task
                 
                 elif action[0] == 'wait':
-                    # 如果有3个参数，播放音符但不等待
+                    # If there are 3 parameters, play the note but do not wait
                     if len(action) == 3:
                         print(f"Playing note with frequency {action[2]} for {action[1]} seconds")
                         await robot.play_note(action[2], action[1])
-                    # 如果参数少于3个，执行等待
+                    # If there are fewer than 3 parameters, execute wait
                     elif len(action) < 3:
                         print(f"Waiting for {action[1]} seconds")
                         await robot.wait(action[1])
@@ -161,7 +161,6 @@ async def perform_actions(robot):
             axs[i, 1].set_xlabel('Time (s)')
             axs[i, 1].set_ylabel('Amplitude')
             axs[i, 1].set_ylim([-1, 1])  # Set y-axis limits
-
 
         plt.tight_layout()
         plt.show()

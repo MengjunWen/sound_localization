@@ -12,7 +12,7 @@ from logger import Logger
 import asyncio
 
 async def main():
-    exp_manager = ExperimentManager()  # 创建实验文件夹管理器
+    exp_manager = ExperimentManager()  # Create experiment folder manager
     exp_folder = exp_manager.get_exp_folder()
     logger = Logger(exp_folder)
 
@@ -33,6 +33,6 @@ async def main():
 
     print('Finished')
 
-# 运行异步主函数
+# Run the asynchronous main function
 if __name__ == "__main__":
     asyncio.run(main())

@@ -5,7 +5,7 @@ from datetime import datetime
 class Logger:
     def __init__(self, output_directory):
         self.output_directory = output_directory
-        self.timestamps = {}  # 修改为字典而不是列表
+        self.timestamps = {}
 
     def log_timestamp(self, event_name):
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f') 

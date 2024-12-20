@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from cv2 import aruco
 import pandas as pd
-from datetime import datetime  # 导入 datetime 类
+from datetime import datetime  # Import datetime class
 import time
 
 # Load calibration data
@@ -28,7 +28,7 @@ frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # Initialize video writer, saving as output.avi
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # 正常时间戳
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # Normal timestamp
 output_filename = f'output_{timestamp}.avi'
 out = cv2.VideoWriter(output_filename, fourcc, 20.0, (frame_width, frame_height))
 
@@ -97,12 +97,12 @@ while True:
                 pts_5_img = np.array([[center_5[0], center_5[1]]], dtype='float32')
                 pts_5_virtual = cv2.perspectiveTransform(np.array([pts_5_img]), np.linalg.inv(H))
                 
-                # Output the virtual coordinates of the fifth marker in the square plane
+                # Output the virtual coordinates of the fifth ArUco marker in the square plane
                 x_virtual, y_virtual = pts_5_virtual[0][0]
                 print(f"Virtual coordinates of the fifth ArUco marker: [{x_virtual:.2f}, {y_virtual:.2f}]")
 
                 # Record the exact time and coordinates with milliseconds
-                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]  # 获取带毫秒的时间戳
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]  # Get timestamp with milliseconds
                 data['Time'].append(current_time)
                 data['X'].append(x_virtual)
                 data['Y'].append(y_virtual)

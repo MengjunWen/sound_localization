@@ -52,7 +52,7 @@ class VideoRecorder:
 
     async def capture_frames(self):
         try:
-            first_frame_written = False  # 标志变量，用于记录第一帧写入时间
+            first_frame_written = False  # Flag variable to record the first frame write time
             while self.recording:
                 ret, frame = self.cap.read()
 
@@ -65,12 +65,12 @@ class VideoRecorder:
                 if self.out:
                     self.out.write(frame_undistorted)
 
-                    # 如果是第一帧，记录写入时间
+                    # If it is the first frame, record the write time
                     if not first_frame_written:
                         self.logger.log_timestamp('video_first_frame_written')
                         first_frame_written = True
 
-                await asyncio.sleep(0.05)  # 控制循环间隔，避免CPU占用过高
+                await asyncio.sleep(0.05)  # Control loop interval to avoid high CPU usage
 
             cv2.destroyAllWindows()
 

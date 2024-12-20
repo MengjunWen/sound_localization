@@ -31,7 +31,7 @@ class AudioRecorders:
 
             if len(self.list_of_esp32) >= expected_count:
                 print(f"All {expected_count} devices discovered.")
-                break  # 找到期望数量设备，退出循环
+                break  # Found the expected number of devices, exit the loop
             else:
                 print(f"Only {len(self.list_of_esp32)} devices discovered. Retrying...")
 
@@ -108,7 +108,7 @@ class AudioRecorders:
 
                     print(f"Downloaded {latest} from {device_ip} as {download_name}")
 
-                    # 转换二进制文件到WAV
+                    # Convert binary file to WAV
                     audio_wav_folder = os.path.join(self.output_directory, "audio_wav_files")
                     os.makedirs(audio_wav_folder, exist_ok=True)
 
@@ -122,7 +122,7 @@ class AudioRecorders:
 
     def convert_bin_to_wav(self, bin_path, output_dir):
         try:
-            # 获取文件名，不包括扩展名
+            # Get the filename without the extension
             ip_mapping = {
                 "17221159": "1",
                 "17221170": "2",
@@ -131,33 +131,33 @@ class AudioRecorders:
             }
             filename = os.path.basename(bin_path).replace(".bin", "")
 
-            # 提取 IP 地址和剩余部分
+            # Extract IP address and remaining part
             parts = filename.split("_")
             ip_address = parts[0]
             other_part = parts[-1]
 
-            # 替换 IP 为对应序号
+            # Replace IP with corresponding number
             if ip_address in ip_mapping:
                 new_filename = f"{ip_mapping[ip_address]}_{other_part}"
             else:
-                raise ValueError(f"IP  {ip_address} not found")
+                raise ValueError(f"IP {ip_address} not found")
 
-            # 确定输出路径
+            # Determine output path
             output_path = os.path.join(output_dir, f"{new_filename}.wav")
 
-            # 确保目标文件夹存在
+            # Ensure the target folder exists
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-            # 读取二进制文件数据
+            # Read binary file data
             with open(bin_path, 'rb') as file:
                 binary_data = file.read()
 
-            # 参数定义：立体声、PCM 16位、采样率 44.1 kHz
+            # Parameter definition: stereo, PCM 16-bit, sample rate 44.1 kHz
             channels = 2
             sample_width = 2
             frame_rate = 44100
 
-            # 创建WAV文件
+            # Create WAV file
             with wave.open(output_path, 'wb') as wav_file:
                 wav_file.setnchannels(channels)
                 wav_file.setsampwidth(sample_width)
