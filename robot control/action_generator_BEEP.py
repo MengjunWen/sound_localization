@@ -112,7 +112,7 @@ def generate_random_action_sequence():
     sequence.append(('wait', 0.2, 659))
     sequence.append(('wait', 0.2, 523))
     sequence.append(('wait', 0.2, 880))
-    sequence.append(('wait', 3 ))
+    sequence.append(('wait', 5 ))
     return sequence
 
 def save_actions_to_csv(sequence):
