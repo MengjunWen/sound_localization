@@ -4,12 +4,6 @@ import pandas as pd
 from cv2 import aruco
 from datetime import datetime
 
-# Load calibration data
-with np.load(r'd:\MOOD-SENSE\aruco_marker\calibration_data.npz') as data:
-    mtx = data['mtx']
-    dist = data['dist']
-print("Camera calibration data loaded.")
-
 # Define ArUco marker dictionary
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 parameters = aruco.DetectorParameters()
